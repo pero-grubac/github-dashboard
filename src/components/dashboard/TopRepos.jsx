@@ -16,16 +16,28 @@ function RepoCard({ r }) {
         position: "relative",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = r.pinned ? C.accent + "88" : C.border2;
+        e.currentTarget.style.borderColor = r.pinned
+          ? C.accent + "88"
+          : C.border2;
         e.currentTarget.style.transform = "translateY(-1px)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = r.pinned ? C.accent + "44" : C.border;
+        e.currentTarget.style.borderColor = r.pinned
+          ? C.accent + "44"
+          : C.border;
         e.currentTarget.style.transform = "none";
       }}
     >
       {r.pinned && (
-        <div style={{ position: "absolute", top: 10, right: 10, fontSize: 10, opacity: 0.5 }}>
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            fontSize: 10,
+            opacity: 0.5,
+          }}
+        >
           📌
         </div>
       )}
@@ -52,12 +64,16 @@ function RepoCard({ r }) {
         </span>
         <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
           {r.stars > 0 && (
-            <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: C.dim }}>
+            <span
+              style={{ fontFamily: "var(--mono)", fontSize: 10, color: C.dim }}
+            >
               ★ {r.stars}
             </span>
           )}
           {r.forks > 0 && (
-            <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: C.dim }}>
+            <span
+              style={{ fontFamily: "var(--mono)", fontSize: 10, color: C.dim }}
+            >
               ⑂ {r.forks}
             </span>
           )}
@@ -80,7 +96,14 @@ function RepoCard({ r }) {
         </div>
       )}
       {r.lang && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 4,
+          }}
+        >
           <div
             style={{
               width: 8,
@@ -89,7 +112,9 @@ function RepoCard({ r }) {
               background: LANG_COLOR[r.lang] || C.dim,
             }}
           />
-          <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: C.dim }}>
+          <span
+            style={{ fontFamily: "var(--mono)", fontSize: 10, color: C.dim }}
+          >
             {r.lang}
           </span>
         </div>
@@ -109,7 +134,9 @@ export function TopRepos({ topRepos, pinnedCount }) {
           marginBottom: 16,
         }}
       >
-        <SectionTitle style={{ marginBottom: 0 }}>Top Repositories</SectionTitle>
+        <SectionTitle style={{ marginBottom: 0 }}>
+          Top Repositories
+        </SectionTitle>
         {pinnedCount > 0 && (
           <span
             style={{
@@ -126,13 +153,7 @@ export function TopRepos({ topRepos, pinnedCount }) {
           </span>
         )}
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 10,
-        }}
-      >
+      <div className="reposGrid">
         {topRepos.map((r) => (
           <RepoCard key={r.name} r={r} />
         ))}

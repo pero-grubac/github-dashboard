@@ -37,7 +37,7 @@ export async function loadStats(username) {
   const otherTopRepos = [...repos]
     .filter((r) => !r.fork && !pinnedNames.has(r.name))
     .sort((a, b) => score(b) - score(a))
-    .slice(0, Math.max(0, 9 - pinnedRepos.length))
+    .slice(0, Math.max(0, 10 - pinnedRepos.length))
     .map((r) => ({
       name: r.name,
       stars: r.stargazers_count,
@@ -62,7 +62,7 @@ export async function loadStats(username) {
 
   const recentRepos = [...repos]
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    .slice(0, 6);
+    .slice(0, 10);
 
   return {
     user,
@@ -72,9 +72,9 @@ export async function loadStats(username) {
     reposByYear,
     recentRepos,
     originalCount: repos.filter((r) => !r.fork).length,
-    forkCount:     repos.filter((r) => r.fork).length,
-    totalStars:    repos.reduce((s, r) => s + r.stargazers_count, 0),
-    totalForks:    repos.reduce((s, r) => s + r.forks_count, 0),
-    pinnedCount:   pinnedRepos.length,
+    forkCount: repos.filter((r) => r.fork).length,
+    totalStars: repos.reduce((s, r) => s + r.stargazers_count, 0),
+    totalForks: repos.reduce((s, r) => s + r.forks_count, 0),
+    pinnedCount: pinnedRepos.length,
   };
 }
