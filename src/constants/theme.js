@@ -1,0 +1,32 @@
+export const C = {
+  bg:      "#0c0e12",
+  surface: "#13161c",
+  card:    "#181b22",
+  border:  "#1f2330",
+  border2: "#2a2f40",
+  text:    "#e8eaf0",
+  dim:     "#4a5068",
+  muted:   "#8890a8",
+  accent:  "#5b8af5",
+  accent2: "#7c6cf5",
+  green:   "#3dd68c",
+  orange:  "#f5a623",
+  red:     "#f55b5b",
+};
+
+export const LANG_COLOR = {
+  Python:     "#4b8bbe",
+  Java:       "#f89820",
+  "C#":       "#9b4f97",
+  JavaScript: "#f0db4f",
+  TypeScript: "#007acc",
+  Dart:       "#00b4ab",
+  HTML:       "#e34c26",
+  CSS:        "#264de4",
+  Go:         "#00acd7",
+  Rust:       "#ce422b",
+  Ruby:       "#cc0000",
+  PHP:        "#787cb5",
+  Swift:      "#fa7343",
+  Kotlin:     "#a97bff",
+};
