@@ -13,9 +13,9 @@ import { TopRepos } from "./components/dashboard/TopRepos";
 import { RecentRepos } from "./components/dashboard/RecentRepos";
 
 export default function App() {
-  const [input, setInput]   = useState(DEFAULT_USER);
-  const [data, setData]     = useState(null);
-  const [log, setLog]       = useState([]);
+  const [input, setInput] = useState(DEFAULT_USER);
+  const [data, setData] = useState(null);
+  const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const push = useCallback(
@@ -31,9 +31,14 @@ export default function App() {
       try {
         push(`Connecting to github.com/${user}...`);
         const stats = await loadStats(user);
-        push(`Found ${stats.repos.length} repositories across ${stats.langs.length} languages`);
-        push(`${stats.totalStars} total stars · joined ${new Date(stats.user.created_at).getFullYear()}`);
-        if (stats.pinnedCount > 0) push(`${stats.pinnedCount} pinned repositories detected`);
+        push(
+          `Found ${stats.repos.length} repositories across ${stats.langs.length} languages`,
+        );
+        push(
+          `${stats.totalStars} total stars · joined ${new Date(stats.user.created_at).getFullYear()}`,
+        );
+        if (stats.pinnedCount > 0)
+          push(`${stats.pinnedCount} pinned repositories detected`);
         setData(stats);
       } catch (e) {
         push(e.message, false);
@@ -96,6 +101,8 @@ export default function App() {
 
             <StatsRow
               langs={data.langs}
+              frameworks={data.frameworks}
+              tools={data.tools}
               originalCount={data.originalCount}
               forkCount={data.forkCount}
               reposByYear={data.reposByYear}
