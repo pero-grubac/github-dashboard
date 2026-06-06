@@ -1,5 +1,8 @@
 import { ghFetch, fetchAll, fetchPinned } from "./ghFetch";
 
+const CACHE_KEY = "gh-dashboard-cache";
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
 const FRAMEWORKS = new Set([
   "react",
   "vue",
@@ -54,24 +57,45 @@ const TOOLS = new Set([
   "azure",
 ]);
 
-async function fetchLangBytes(repos) {
-  const targets = repos.filter((r) => !r.fork).slice(0, 60);
-  const results = await Promise.allSettled(
-    targets.map((r) => ghFetch(`/repos/${r.full_name}/languages`)),
-  );
-  const totals = {};
-  results.forEach((res) => {
-    if (res.status !== "fulfilled") return;
-    Object.entries(res.value).forEach(([lang, bytes]) => {
-      totals[lang] = (totals[lang] || 0) + bytes;
+function loadCache(username) {
+  try {
+    const raw = localStorage.getItem(`${CACHE_KEY}-${username}`);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveCache(username, data) {
+  try {
+    localStorage.setItem(
+      `${CACHE_KEY}-${username}`,
+      JSON.stringify({ ts: Date.now(), data }),
+    );
+  } catch {}
+}
+
+function aggregateLanguages(repos) {
+  const langMap = {};
+  repos.forEach((r) => {
+    const langs = Object.keys(r.languages || {});
+    if (langs.length === 0 && r.language) langs.push(r.language);
+    langs.forEach((lang) => {
+      langMap[lang] = (langMap[lang] || 0) + 1;
     });
   });
-  return totals;
+  return Object.entries(langMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([lang, count]) => ({ lang, count }));
 }
 
 function aggregateTopics(repos) {
-  const frameworkMap = {};
-  const toolMap = {};
+  const frameworkMap = {},
+    toolMap = {};
   repos.forEach((r) => {
     (r.topics || []).forEach((topic) => {
       if (FRAMEWORKS.has(topic))
@@ -86,32 +110,40 @@ function aggregateTopics(repos) {
   return { frameworks: toArray(frameworkMap), tools: toArray(toolMap) };
 }
 
-export async function loadStats(username) {
-  const [user, repos, pinned] = await Promise.all([
+export async function loadStats(username, onProgress, forceRefresh = false) {
+  if (!forceRefresh) {
+    const cached = loadCache(username);
+    if (cached) {
+      onProgress("Loaded from cache (1h TTL) ✓");
+      return cached;
+    }
+  }
+
+  onProgress(`Connecting to github.com/${username}...`);
+  const [user, rawRepos, pinned] = await Promise.all([
     ghFetch(`/users/${username}`),
     fetchAll(`/users/${username}/repos`),
     fetchPinned(username),
   ]);
 
-  const langBytes = await fetchLangBytes(repos);
-  const totalBytes = Object.values(langBytes).reduce((s, b) => s + b, 0);
-  const langs = Object.entries(langBytes)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([lang, bytes]) => ({
-      lang,
-      count: Math.round((bytes / totalBytes) * 100),
-      bytes,
-    }));
-
-  const { frameworks, tools } = aggregateTopics(repos);
+  // Sequential language fetch per repo (same as dev-timeline)
+  const nonForks = rawRepos.filter((r) => !r.fork);
+  onProgress(`Scanning ${nonForks.length} repositories...`);
+  const enriched = await Promise.all(
+    nonForks.map(async (repo) => {
+      let languages = {};
+      try {
+        languages = await ghFetch(`/repos/${repo.full_name}/languages`);
+      } catch {}
+      return { ...repo, languages };
+    }),
+  );
+  onProgress("Languages loaded ✓");
+  const langs = aggregateLanguages(enriched);
+  const { frameworks, tools } = aggregateTopics(enriched);
 
   const score = (r) =>
-    r.stargazers_count * 3 +
-    r.forks_count * 2 +
-    (r.fork ? 0 : 5) +
-    (r.description ? 2 : 0);
-
+    r.stargazers_count * 3 + r.forks_count * 2 + 5 + (r.description ? 2 : 0);
   const pinnedNames = new Set(pinned.map((p) => p.name));
   const pinnedRepos = pinned.map((p) => ({
     name: p.name,
@@ -122,8 +154,8 @@ export async function loadStats(username) {
     desc: p.description,
     pinned: true,
   }));
-  const otherTopRepos = [...repos]
-    .filter((r) => !r.fork && !pinnedNames.has(r.name))
+  const otherTopRepos = enriched
+    .filter((r) => !pinnedNames.has(r.name))
     .sort((a, b) => score(b) - score(a))
     .slice(0, Math.max(0, 9 - pinnedRepos.length))
     .map((r) => ({
@@ -138,7 +170,7 @@ export async function loadStats(username) {
   const topRepos = [...pinnedRepos, ...otherTopRepos];
 
   const byYear = {};
-  repos.forEach((r) => {
+  rawRepos.forEach((r) => {
     const y = new Date(r.created_at).getFullYear();
     byYear[y] = (byYear[y] || 0) + 1;
   });
@@ -146,23 +178,26 @@ export async function loadStats(username) {
     .sort((a, b) => +a[0] - +b[0])
     .map(([year, count]) => ({ year: +year, count }));
 
-  const recentRepos = [...repos]
+  const recentRepos = [...rawRepos]
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
     .slice(0, 6);
 
-  return {
+  const result = {
     user,
-    repos,
+    repos: rawRepos,
     langs,
     frameworks,
     tools,
     topRepos,
     reposByYear,
     recentRepos,
-    originalCount: repos.filter((r) => !r.fork).length,
-    forkCount: repos.filter((r) => r.fork).length,
-    totalStars: repos.reduce((s, r) => s + r.stargazers_count, 0),
-    totalForks: repos.reduce((s, r) => s + r.forks_count, 0),
+    originalCount: nonForks.length,
+    forkCount: rawRepos.filter((r) => r.fork).length,
+    totalStars: rawRepos.reduce((s, r) => s + r.stargazers_count, 0),
+    totalForks: rawRepos.reduce((s, r) => s + r.forks_count, 0),
     pinnedCount: pinnedRepos.length,
   };
+
+  saveCache(username, result);
+  return result;
 }

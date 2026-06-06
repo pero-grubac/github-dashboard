@@ -30,7 +30,7 @@ export default function App() {
       setLog([]);
       try {
         push(`Connecting to github.com/${user}...`);
-        const stats = await loadStats(user);
+        const stats = await loadStats(user, push);
         push(
           `Found ${stats.repos.length} repositories across ${stats.langs.length} languages`,
         );

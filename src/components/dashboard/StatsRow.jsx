@@ -22,7 +22,7 @@ export function StatsRow({ langs, frameworks, tools, reposByYear }) {
       >
         <Card>
           <SectionTitle>Languages</SectionTitle>
-          <LangBars data={langs} unit="%" />
+          <LangBars data={langs} />
         </Card>
 
         <Card>
