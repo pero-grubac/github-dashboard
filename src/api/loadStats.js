@@ -1,4 +1,5 @@
-import { ghFetch, fetchAll, fetchPinned } from "./ghFetch";
+import { ghFetch, fetchAll } from "./ghFetch.js";
+import { loadSnapshot } from "./snapshot.js";
 
 const CACHE_KEY = "gh-dashboard-cache";
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
@@ -75,10 +76,12 @@ function saveCache(username, data) {
       `${CACHE_KEY}-${username}`,
       JSON.stringify({ ts: Date.now(), data }),
     );
-  } catch {}
+  } catch {
+    // Storage full or blocked: the dashboard still works without a cache.
+  }
 }
 
-function aggregateLanguages(repos) {
+export function aggregateLanguages(repos) {
   const langMap = {};
   repos.forEach((r) => {
     const langs = Object.keys(r.languages || {});
@@ -93,7 +96,7 @@ function aggregateLanguages(repos) {
     .map(([lang, count]) => ({ lang, count }));
 }
 
-function aggregateTopics(repos) {
+export function aggregateTopics(repos) {
   const frameworkMap = {},
     toolMap = {};
   repos.forEach((r) => {
@@ -110,35 +113,14 @@ function aggregateTopics(repos) {
   return { frameworks: toArray(frameworkMap), tools: toArray(toolMap) };
 }
 
-export async function loadStats(username, onProgress, forceRefresh = false) {
-  if (!forceRefresh) {
-    const cached = loadCache(username);
-    if (cached) {
-      onProgress("Loaded from cache (1h TTL) ✓");
-      return cached;
-    }
-  }
-
-  onProgress(`Connecting to github.com/${username}...`);
-  const [user, rawRepos, pinned] = await Promise.all([
-    ghFetch(`/users/${username}`),
-    fetchAll(`/users/${username}/repos`),
-    fetchPinned(username),
-  ]);
-
-  // Sequential language fetch per repo (same as dev-timeline)
+// Turns the raw GitHub data (from the snapshot or the live API) into
+// everything the dashboard renders. `languages` maps full_name → bytes.
+export function buildStats({ user, repos: rawRepos, languages = {}, pinned = [] }) {
   const nonForks = rawRepos.filter((r) => !r.fork);
-  onProgress(`Scanning ${nonForks.length} repositories...`);
-  const enriched = await Promise.all(
-    nonForks.map(async (repo) => {
-      let languages = {};
-      try {
-        languages = await ghFetch(`/repos/${repo.full_name}/languages`);
-      } catch {}
-      return { ...repo, languages };
-    }),
-  );
-  onProgress("Languages loaded ✓");
+  const enriched = nonForks.map((repo) => ({
+    ...repo,
+    languages: languages[repo.full_name] || {},
+  }));
   const langs = aggregateLanguages(enriched);
   const { frameworks, tools } = aggregateTopics(enriched);
 
@@ -182,7 +164,7 @@ export async function loadStats(username, onProgress, forceRefresh = false) {
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
     .slice(0, 6);
 
-  const result = {
+  return {
     user,
     repos: rawRepos,
     langs,
@@ -197,7 +179,70 @@ export async function loadStats(username, onProgress, forceRefresh = false) {
     totalForks: rawRepos.reduce((s, r) => s + r.forks_count, 0),
     pinnedCount: pinnedRepos.length,
   };
+}
 
+async function loadLive(username, onProgress) {
+  onProgress(`Connecting to github.com/${username}...`);
+  const [user, repos] = await Promise.all([
+    ghFetch(`/users/${username}`),
+    fetchAll(`/users/${username}/repos`),
+  ]);
+
+  // Language bytes per repository, fetched in parallel
+  const nonForks = repos.filter((r) => !r.fork);
+  onProgress(`Scanning ${nonForks.length} repositories...`);
+  const languages = {};
+  await Promise.all(
+    nonForks.map(async (repo) => {
+      try {
+        languages[repo.full_name] = await ghFetch(
+          `/repos/${repo.full_name}/languages`,
+        );
+      } catch {
+        // Falls back to the repository's primary language.
+      }
+    }),
+  );
+  onProgress("Languages loaded ✓");
+  return { user, repos, languages };
+}
+
+export async function loadStats(username, onProgress, forceRefresh = false) {
+  // The default profile ships with the site as a build-time snapshot.
+  const snapshot = await loadSnapshot(username);
+  if (snapshot) {
+    onProgress("Loaded build-time snapshot ✓");
+    return {
+      ...buildStats(snapshot),
+      contributions: snapshot.contributions || null,
+      source: { kind: "snapshot", generatedAt: snapshot.generatedAt },
+    };
+  }
+
+  if (!forceRefresh) {
+    const cached = loadCache(username);
+    if (cached) {
+      onProgress("Loaded from cache (1h TTL) ✓");
+      return cached;
+    }
+  }
+
+  const raw = await loadLive(username, onProgress);
+  const result = {
+    ...buildStats(raw),
+    contributions: null,
+    source: { kind: "live", fetchedAt: new Date().toISOString() },
+  };
   saveCache(username, result);
   return result;
+}
+
+// Lighter load for the "vs" profile: two requests plus pagination, with
+// languages taken from each repository's primary language.
+export async function loadProfile(username) {
+  const [user, repos] = await Promise.all([
+    ghFetch(`/users/${username}`),
+    fetchAll(`/users/${username}/repos`),
+  ]);
+  return { user, repos };
 }

@@ -2,9 +2,9 @@ const BASE = "https://api.github.com";
 
 export async function ghFetch(path) {
   const url = path.startsWith("http") ? path : `${BASE}${path}`;
+  // No token in the browser: authenticated data (pinned repositories,
+  // contributions) comes from the build-time snapshot instead.
   const headers = { Accept: "application/vnd.github.v3+json" };
-  if (import.meta.env.VITE_GITHUB_TOKEN)
-    headers["Authorization"] = `Bearer ${import.meta.env.VITE_GITHUB_TOKEN}`;
 
   const attempts = [
     () => fetch(url, { headers }),
@@ -46,18 +46,4 @@ export async function fetchAll(path) {
     page++;
   }
   return out;
-}
-
-export async function fetchPinned(username) {
-  const query = `{ user(login: "${username}") { pinnedItems(first: 6, types: REPOSITORY) { nodes { ... on Repository { name description stargazerCount forkCount primaryLanguage { name } url } } } } }`;
-  try {
-    const r = await fetch("https://api.github.com/graphql", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
-    });
-    const j = await r.json();
-    if (j?.data?.user?.pinnedItems?.nodes) return j.data.user.pinnedItems.nodes;
-  } catch {}
-  return [];
 }

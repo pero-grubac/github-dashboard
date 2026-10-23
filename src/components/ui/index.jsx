@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { C } from "../../constants/theme";
 
-export function SectionTitle({ children }) {
+export function SectionTitle({ children, style }) {
   return (
     <div
       style={{
@@ -12,6 +12,7 @@ export function SectionTitle({ children }) {
         color: C.dim,
         marginBottom: 16,
         textTransform: "uppercase",
+        ...style,
       }}
     >
       {children}
@@ -56,6 +57,8 @@ export function TermLog({ lines }) {
   return (
     <div
       ref={ref}
+      className="noPrint"
+      data-testid="term-log"
       style={{
         background: C.surface,
         border: `1px solid ${C.border}`,

@@ -5,6 +5,7 @@ import { Stat } from "../ui/Stat";
 export function ProfileCard({ user, totalStars }) {
   return (
     <div
+      className="profileGrid"
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",

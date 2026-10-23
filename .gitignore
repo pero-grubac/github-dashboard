@@ -1,22 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Build-time GitHub snapshot (npm run snapshot)
+public/data/
+
+# Test coverage and reports
+coverage/
+test-results/
+playwright-report/
+.lighthouseci/
+_site/
+
+# Environment (keep the example)
+.env
+.env.*
+!.env.example
 *.local
 
-# Editor directories and files
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj

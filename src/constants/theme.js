@@ -5,7 +5,7 @@ export const C = {
   border:  "#1f2330",
   border2: "#2a2f40",
   text:    "#e8eaf0",
-  dim:     "#4a5068",
+  dim:     "#6b7390",
   muted:   "#8890a8",
   accent:  "#5b8af5",
   accent2: "#7c6cf5",

@@ -19,30 +19,97 @@ body {
 
 .reposGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* Up to 9 repositories, so three columns never leave an orphan. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-@media (max-width: 1400px) {
-  .reposGrid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+.compareGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-@media (max-width: 1100px) {
-  .reposGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 800px) {
-  .reposGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 500px) {
+@media (max-width: 760px) {
   .reposGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Inline styles set the desktop layout; these override it on phones. */
+@media (max-width: 640px) {
+  #dashboard-root {
+    padding: 20px 16px 60px !important;
+  }
+
+  .profileGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .profileGrid > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .profileGrid > :not(:first-child) {
+    padding: 14px 12px !important;
+  }
+
+  .recentDate {
+    display: none;
+  }
+
+  .compareGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .headerControls,
+  .searchBar {
+    width: 100%;
+  }
+
+  .searchPrefix {
+    display: none;
+  }
+
+  .searchBar input {
+    flex: 1;
+    min-width: 0;
+    width: auto !important;
+  }
+}
+
+.exporting .noPrint {
+  display: none !important;
+}
+
+/* "PDF" export: the browser's print dialog, without the controls and log,
+   keeping the dark theme. */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  html,
+  body,
+  #root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .noPrint {
+    display: none !important;
+  }
+
+  #dashboard-root {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .reposGrid > *,
+  .compareGrid > *,
+  .profileGrid > * {
+    break-inside: avoid;
   }
 }

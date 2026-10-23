@@ -44,6 +44,7 @@ export function RecentRepos({ recentRepos }) {
               {r.name}
             </span>
             <span
+              className="recentDate"
               style={{
                 fontFamily: "var(--mono)",
                 fontSize: 10,

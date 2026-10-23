@@ -1,6 +1,11 @@
-import { C, LANG_COLOR } from "../constants/theme";
+import { C, LANG_COLOR } from "../constants/theme.js";
 
-export function exportHTML(data) {
+// Names, descriptions and bios come from GitHub users, so they are escaped
+// before going into the exported HTML file.
+const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+export const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ESCAPES[c]);
+
+export function buildDashboardHTML(data) {
   const lc = (col) => LANG_COLOR[col] || C.dim;
   const maxLang = Math.max(...data.langs.map((l) => l.count));
   const maxYear = Math.max(...data.reposByYear.map((d) => d.count));
@@ -43,18 +48,18 @@ export function exportHTML(data) {
   const repoCards = data.topRepos
     .map(
       (r) => `
-    <a href="${r.url}" target="_blank" style="text-decoration:none;display:block;background:${C.surface};border:1px solid ${C.border};border-radius:8px;padding:14px 16px">
+    <a href="${esc(r.url)}" target="_blank" style="text-decoration:none;display:block;background:${C.surface};border:1px solid ${C.border};border-radius:8px;padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
         <span style="font-family:monospace;font-size:12px;color:${C.accent};font-weight:500">
-          ${r.pinned ? "📌 " : ""}${r.name}
+          ${r.pinned ? "📌 " : ""}${esc(r.name)}
         </span>
         <div style="display:flex;gap:10px;flex-shrink:0">
           ${r.stars > 0 ? `<span style="font-family:monospace;font-size:10px;color:${C.dim}">★ ${r.stars}</span>` : ""}
           ${r.forks > 0 ? `<span style="font-family:monospace;font-size:10px;color:${C.dim}">⑂ ${r.forks}</span>` : ""}
         </div>
       </div>
-      ${r.desc ? `<div style="font-size:11px;color:${C.muted};line-height:1.5;margin-bottom:8px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${r.desc}</div>` : ""}
-      ${r.lang ? `<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><div style="width:8px;height:8px;border-radius:50%;background:${lc(r.lang)}"></div><span style="font-family:monospace;font-size:10px;color:${C.dim}">${r.lang}</span></div>` : ""}
+      ${r.desc ? `<div style="font-size:11px;color:${C.muted};line-height:1.5;margin-bottom:8px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(r.desc)}</div>` : ""}
+      ${r.lang ? `<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><div style="width:8px;height:8px;border-radius:50%;background:${lc(r.lang)}"></div><span style="font-family:monospace;font-size:10px;color:${C.dim}">${esc(r.lang)}</span></div>` : ""}
     </a>`,
     )
     .join("");
@@ -64,22 +69,22 @@ export function exportHTML(data) {
       (r, i) => `
     <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:${i < data.recentRepos.length - 1 ? `1px solid ${C.border}` : "none"}">
       <span style="font-family:monospace;font-size:10px;color:${C.dim};min-width:22px;flex-shrink:0">${String(i + 1).padStart(2, "0")}</span>
-      <span style="font-family:monospace;font-size:12px;color:${C.text};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</span>
+      <span style="font-family:monospace;font-size:12px;color:${C.text};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
       <span style="font-family:monospace;font-size:10px;color:${C.dim};flex-shrink:0">${new Date(r.updated_at).toISOString().slice(0, 10)}</span>
       <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;width:90px">
-        ${r.language ? `<div style="width:7px;height:7px;border-radius:50%;background:${lc(r.language)}"></div><span style="font-family:monospace;font-size:10px;color:${C.muted}">${r.language}</span>` : ""}
+        ${r.language ? `<div style="width:7px;height:7px;border-radius:50%;background:${lc(r.language)}"></div><span style="font-family:monospace;font-size:10px;color:${C.muted}">${esc(r.language)}</span>` : ""}
       </div>
     </div>`,
     )
     .join("");
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>GitHub Dashboard — ${data.user.login}</title>
+<title>GitHub Dashboard — ${esc(data.user.login)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:${C.bg};color:${C.text};font-family:system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -97,16 +102,16 @@ export function exportHTML(data) {
       <div style="font-family:monospace;font-size:10px;letter-spacing:.25em;color:${C.dim};margin-bottom:6px">GITHUB PROFILE DASHBOARD</div>
       <h1 style="font-size:clamp(20px,3vw,28px);font-weight:700;color:${C.text};letter-spacing:-.02em">Developer Analytics</h1>
     </div>
-    <div style="font-family:monospace;font-size:10px;color:${C.dim}">${new Date().toISOString().slice(0, 10)} · github.com/${data.user.login}</div>
+    <div style="font-family:monospace;font-size:10px;color:${C.dim}">${new Date().toISOString().slice(0, 10)} · github.com/${esc(data.user.login)}</div>
   </div>
 
   <div class="grid4" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">
     <div style="background:${C.card};border:1px solid ${C.border};border-radius:10px;padding:20px 24px;display:flex;align-items:center;gap:14px">
-      <img src="${data.user.avatar_url}" crossorigin="anonymous" style="width:48px;height:48px;border-radius:50%;border:2px solid ${C.border2};flex-shrink:0">
+      <img src="${esc(data.user.avatar_url)}" crossorigin="anonymous" style="width:48px;height:48px;border-radius:50%;border:2px solid ${C.border2};flex-shrink:0">
       <div>
-        <div style="font-size:15px;font-weight:700;color:${C.text}">${data.user.name || data.user.login}</div>
-        <div style="font-family:monospace;font-size:10px;color:${C.dim};margin-top:3px">@${data.user.login}</div>
-        ${data.user.location ? `<div style="font-family:monospace;font-size:10px;color:${C.dim};margin-top:2px">📍 ${data.user.location}</div>` : ""}
+        <div style="font-size:15px;font-weight:700;color:${C.text}">${esc(data.user.name || data.user.login)}</div>
+        <div style="font-family:monospace;font-size:10px;color:${C.dim};margin-top:3px">@${esc(data.user.login)}</div>
+        ${data.user.location ? `<div style="font-family:monospace;font-size:10px;color:${C.dim};margin-top:2px">📍 ${esc(data.user.location)}</div>` : ""}
       </div>
     </div>
     ${[
@@ -124,7 +129,7 @@ export function exportHTML(data) {
       .join("")}
   </div>
 
-  ${data.user.bio ? `<div style="font-size:13px;color:${C.muted};margin-bottom:24px">${data.user.bio}</div>` : ""}
+  ${data.user.bio ? `<div style="font-size:13px;color:${C.muted};margin-bottom:24px">${esc(data.user.bio)}</div>` : ""}
 
   <div class="grid2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px">
     <div style="background:${C.card};border:1px solid ${C.border};border-radius:10px;padding:20px 24px">
@@ -165,12 +170,15 @@ export function exportHTML(data) {
 
   <div style="margin-top:24px;font-family:monospace;font-size:10px;color:${C.dim};display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <span>data via api.github.com · generated ${new Date().toISOString().replace("T", " ").slice(0, 19)} UTC</span>
-    <span>github.com/${data.user.login}</span>
+    <span>github.com/${esc(data.user.login)}</span>
   </div>
 </div>
 </body>
 </html>`;
+}
 
+export function exportHTML(data) {
+  const html = buildDashboardHTML(data);
   const blob = new Blob([html], { type: "text/html" });
   const link = document.createElement("a");
   link.download = `github-dashboard-${data.user.login}.html`;

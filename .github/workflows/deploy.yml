@@ -1,34 +1,82 @@
-name: Deploy to GitHub Pages
+name: Deploy
+
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "readme_assets/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".env.example"
+      - ".vscode/**"
   workflow_dispatch:
+  # Daily data refresh: rebuilds the site with a fresh GitHub snapshot.
+  schedule:
+    - cron: "17 4 * * *"
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: pages
   cancel-in-progress: true
+
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+      # Raw GitHub data for the default profile -> public/data/<user>.json.
+      # The token stays in this step and never reaches the bundle. Without the
+      # secret it runs unauthenticated (no pinned repos, no heatmap). If GitHub
+      # refuses it (rate limit, expired token) the job stops, so the previous
+      # deployment and its snapshot stay online instead of a site without one.
+      - run: npm run snapshot
         env:
-          VITE_GITHUB_TOKEN: ${{ secrets.VITE_GITHUB_TOKEN }}
-      - uses: actions/configure-pages@v4
+          GITHUB_TOKEN: ${{ secrets.GH_SNAPSHOT_TOKEN }}
+      - run: npm run build
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
+
+  deploy:
+    needs: [build, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4

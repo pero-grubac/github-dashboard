@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 
 import { C } from "./constants/theme";
 import { DEFAULT_USER } from "./constants/config";
-import { loadStats } from "./api/loadStats";
+import { loadStats, loadProfile } from "./api/loadStats";
 import { exportHTML } from "./utils/exportHTML";
+import { exportPNG, exportPDF } from "./utils/exportImage";
+import { summarizeProfile } from "./utils/compare";
+import { sourceLabel } from "./utils/source";
 
 import { TermLog } from "./components/ui/index";
 import { Header } from "./components/dashboard/Header";
@@ -11,10 +14,14 @@ import { ProfileCard } from "./components/dashboard/ProfileCard";
 import { StatsRow } from "./components/dashboard/StatsRow";
 import { TopRepos } from "./components/dashboard/TopRepos";
 import { RecentRepos } from "./components/dashboard/RecentRepos";
+import { Heatmap } from "./components/dashboard/Heatmap";
+import { Comparison } from "./components/dashboard/Comparison";
 
 export default function App() {
   const [input, setInput] = useState(DEFAULT_USER);
+  const [vsInput, setVsInput] = useState("");
   const [data, setData] = useState(null);
+  const [vs, setVs] = useState(null);
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -24,13 +31,18 @@ export default function App() {
   );
 
   const load = useCallback(
-    async (user) => {
+    async (rawUser, rawVs = "") => {
+      const user = rawUser.trim();
+      const vsUser = rawVs.trim();
+      if (!user) return;
       setLoading(true);
       setData(null);
+      setVs(null);
       setLog([]);
+      let stats = null;
       try {
-        push(`Connecting to github.com/${user}...`);
-        const stats = await loadStats(user, push);
+        stats = await loadStats(user, push);
+        push(`Data source: ${sourceLabel(stats.source)}`);
         push(
           `Found ${stats.repos.length} repositories across ${stats.langs.length} languages`,
         );
@@ -39,18 +51,44 @@ export default function App() {
         );
         if (stats.pinnedCount > 0)
           push(`${stats.pinnedCount} pinned repositories detected`);
+        if (stats.contributions)
+          push(`${stats.contributions.total} contributions in the last year`);
         setData(stats);
       } catch (e) {
         push(e.message, false);
+      }
+      if (stats && vsUser && vsUser.toLowerCase() !== user.toLowerCase()) {
+        try {
+          push(`Comparing with github.com/${vsUser} (live api.github.com)...`);
+          const other = await loadProfile(vsUser);
+          setVs(summarizeProfile(other.user, other.repos));
+          push(`Comparison ready: @${stats.user.login} vs @${other.user.login} ✓`);
+        } catch (e) {
+          push(`Comparison failed: ${e.message}`, false);
+        }
       }
       setLoading(false);
     },
     [push],
   );
 
+  const onExport = async (kind) => {
+    if (kind === "html") exportHTML(data);
+    else if (kind === "pdf") exportPDF();
+    else {
+      try {
+        await exportPNG(document.getElementById("dashboard-root"), data.user.login);
+      } catch (e) {
+        push(`PNG export failed: ${e.message}`, false);
+      }
+    }
+  };
+
+  // Load the default profile once on mount.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load(DEFAULT_USER);
-  }, []);
+  }, [load]);
 
   return (
     <>
@@ -70,13 +108,18 @@ export default function App() {
         @keyframes growUp  { from{height:0;opacity:0} to{opacity:1} }
       `}</style>
 
-      <div id="dashboard-root" style={{ padding: "32px 32px 80px" }}>
+      <div
+        id="dashboard-root"
+        style={{ maxWidth: 1240, margin: "0 auto", padding: "32px 32px 80px" }}
+      >
         <Header
           input={input}
           setInput={setInput}
+          vsInput={vsInput}
+          setVsInput={setVsInput}
           loading={loading}
           onLoad={load}
-          onExport={() => exportHTML(data)}
+          onExport={onExport}
           hasData={!!data}
         />
 
@@ -99,6 +142,13 @@ export default function App() {
               </div>
             )}
 
+            {vs && (
+              <Comparison
+                a={summarizeProfile(data.user, data.repos)}
+                b={vs}
+              />
+            )}
+
             <StatsRow
               langs={data.langs}
               frameworks={data.frameworks}
@@ -107,6 +157,10 @@ export default function App() {
               forkCount={data.forkCount}
               reposByYear={data.reposByYear}
             />
+
+            {data.contributions?.days?.length > 0 && (
+              <Heatmap contributions={data.contributions} />
+            )}
 
             <TopRepos topRepos={data.topRepos} pinnedCount={data.pinnedCount} />
 
@@ -124,7 +178,7 @@ export default function App() {
                 gap: 8,
               }}
             >
-              <span>data via api.github.com</span>
+              <span data-testid="data-source">data via {sourceLabel(data.source)}</span>
               <span>{new Date().toISOString().slice(0, 10)}</span>
             </div>
           </div>
