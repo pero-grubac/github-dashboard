@@ -248,10 +248,12 @@ Pinned repositories always come first; the rest of the nine slots are filled by 
 
 | Workflow | Runs on | Jobs |
 |----------|---------|------|
-| `ci.yml` | Pull requests and pushes to branches other than `main` | **test**: lint, unit tests, build · **e2e**: Playwright smoke tests (desktop + mobile) · **lighthouse**: Lighthouse CI report on the built site |
-| `deploy.yml` | Push to `main`, a manual run, and **daily at 04:17 UTC** | **build**: lint, unit tests, `npm run snapshot`, build · **e2e**: Playwright · **deploy**: publishes `dist/` to GitHub Pages only after build and e2e pass |
+| `ci.yml` | Every push (including `main`) and pull request | **test**: lint, unit tests, build · **e2e**: Playwright smoke tests (desktop + mobile) · **lighthouse**: Lighthouse CI report on the built site |
+| `deploy.yml` | After **CI passes on `main`**, a manual run, or **daily at 04:17 UTC** (fresh data) | `npm run snapshot` with `GH_SNAPSHOT_TOKEN`, build, then deploy `dist/` to GitHub Pages |
 
-Both workflows **skip documentation-only changes** (`*.md`, `readme_assets/`, `LICENSE`, `.gitignore`, `.env.example`, `.vscode/`), cache npm downloads and cancel superseded runs. The daily run only refreshes the snapshot data; it does not change the repository.
+Deploy is chained to CI (`workflow_run`): a push to `main` is tested once, and only a green run is published, from exactly the commit that was tested. Documentation-only commits start neither.
+
+CI **skips documentation-only changes** (`*.md`, `readme_assets/`, `LICENSE`, `.gitignore`, `.env.example`, `.vscode/`), cache npm downloads and cancel superseded runs. The daily run only refreshes the snapshot data; it does not change the repository.
 
 The e2e tests never touch the real API: `api.github.com`, avatars and fonts are answered with `page.route`, and the snapshot comes from `tests/e2e/fixtures/snapshot.json`. They cover the snapshot load (no API calls), the heatmap, the live fallback, the comparison (side by side and stacked on phones, no horizontal scroll), the three exports and the print stylesheet, and fail on any console error.
 
