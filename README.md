@@ -16,7 +16,7 @@
 
 [![Live Demo](https://img.shields.io/badge/📊_Live_Demo-github--dashboard-5B8AF5?style=for-the-badge)](https://pero-grubac.github.io/github-dashboard/)
 
-<img src="readme_assets/demo.gif" alt="GitHub Dashboard demo: the default profile loads from the build-time snapshot, the contribution heatmap is shown, then a second username is compared side by side and the export buttons are highlighted" width="800">
+<img src="readme_assets/demo.gif" alt="GitHub Dashboard demo with a sample profile: the snapshot load in the terminal log, stats, languages and frameworks, repositories per year, the contribution heatmap and top repositories, then a side-by-side comparison with a second profile" width="800">
 
 </div>
 
